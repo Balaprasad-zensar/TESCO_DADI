@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Enable AWS CloudTrail and log to a centralized S3 bucket
+
+Parameters:
+  LogArchiveBucketName:
+    Type: String
+    Description: Name of the centralized S3 bucket for CloudTrail logs
+
+Resources:
+  CloudTrailLogBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LogArchiveBucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !Sub arn:aws:s3:::${LogArchiveBucketName}
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub arn:aws:s3:::${LogArchiveBucketName}/AWSLogs/${AWS::AccountId}/*
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: "bucket-owner-full-control"
+
+  CloudTrail:
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      TrailName: OrganizationTrail
+      S3BucketName: !Ref LogArchiveBucketName
+      IsMultiRegionTrail: true
+      EnableLogFileValidation: true
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+
+Outputs:
+  CloudTrailName:
+    Description: Name of the CloudTrail
+    Value: !Ref CloudTrail
