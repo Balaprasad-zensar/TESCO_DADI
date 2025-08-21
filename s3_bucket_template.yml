@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName:
+          Ref: LogBucket
+        LogFilePrefix: access-logs/
+      LifecycleConfiguration:
+        Rules:
+        - Id: LifecycleRule
+          Status: Enabled
+          Transitions:
+          - StorageClass: STANDARD_IA
+            TransitionInDays: 30
+          - StorageClass: GLACIER
+            TransitionInDays: 60
+          ExpirationInDays: 1825
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+  LogBucket:
+    Type: AWS::S3::Bucket
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: S3Bucket
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal: '*'
+          Action: s3:*
+          Resource:
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: S3Bucket
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: S3Bucket
+              - /*
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
